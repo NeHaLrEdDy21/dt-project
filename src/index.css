@@ -1,0 +1,111 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 20% 98%;
+    --foreground: 20 15% 15%;
+
+    --card: 30 20% 98%;
+    --card-foreground: 20 15% 15%;
+
+    --popover: 30 20% 98%;
+    --popover-foreground: 20 15% 15%;
+
+    --primary: 20 70% 40%;
+    --primary-foreground: 30 20% 98%;
+
+    --secondary: 35 80% 50%;
+    --secondary-foreground: 30 20% 98%;
+
+    --muted: 30 10% 90%;
+    --muted-foreground: 20 10% 40%;
+
+    --accent: 20 70% 40%;
+    --accent-foreground: 30 20% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 20 15% 85%;
+    --input: 20 15% 85%;
+    --ring: 20 70% 40%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 30 15% 95%;
+    --sidebar-foreground: 20 15% 25%;
+    --sidebar-primary: 20 15% 20%;
+    --sidebar-primary-foreground: 30 20% 98%;
+    --sidebar-accent: 30 10% 92%;
+    --sidebar-accent-foreground: 20 15% 20%;
+    --sidebar-border: 30 10% 85%;
+    --sidebar-ring: 20 60% 45%;
+  }
+
+  .dark {
+    --background: 20 15% 10%;
+    --foreground: 30 10% 90%;
+
+    --card: 20 15% 10%;
+    --card-foreground: 30 10% 90%;
+
+    --popover: 20 15% 10%;
+    --popover-foreground: 30 10% 90%;
+
+    --primary: 20 70% 40%;
+    --primary-foreground: 30 20% 98%;
+
+    --secondary: 35 80% 50%;
+    --secondary-foreground: 30 20% 98%;
+
+    --muted: 20 10% 20%;
+    --muted-foreground: 20 10% 60%;
+
+    --accent: 20 10% 20%;
+    --accent-foreground: 30 10% 90%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 20 10% 25%;
+    --input: 20 10% 25%;
+    --ring: 20 70% 40%;
+    
+    --sidebar-background: 20 15% 15%;
+    --sidebar-foreground: 30 10% 90%;
+    --sidebar-primary: 20 60% 45%;
+    --sidebar-primary-foreground: 30 20% 98%;
+    --sidebar-accent: 20 10% 20%;
+    --sidebar-accent-foreground: 30 10% 90%;
+    --sidebar-border: 20 10% 20%;
+    --sidebar-ring: 20 60% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .food-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .food-heading {
+    @apply text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl md:text-6xl;
+  }
+  
+  .food-subheading {
+    @apply text-xl text-gray-500 dark:text-gray-400;
+  }
+}
