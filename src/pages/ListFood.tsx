@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Clock, Info, AlertCircle } from "lucide-react";
-import { addFoodListing } from "@/utils/foodListingUtils";
+import { api } from '@/utils/api';
 
 const foodCategories = [
   "Vegetables",
@@ -35,45 +35,51 @@ const ListFood = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
-      // Add the new food listing
-      addFoodListing({
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: 'Unauthorized',
+          description: 'Please log in to list food.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await api.createFoodListing({
         title,
+        description,
         category,
-        quantity,
+        quantity: Number(quantity),
         location,
         expiry,
-        distance: generateRandomDistance(),
-        description
+        createdAt: new Date().toISOString(),
       });
-      
-      // Show success toast
+
       toast({
-        title: "Food successfully listed!",
-        description: "Your donation has been posted and is now visible to potential recipients.",
+        title: 'Food successfully listed!',
+        description: 'Your donation has been posted.',
       });
-      
+
       // Reset form
-      setTitle("");
-      setCategory("");
-      setQuantity("");
-      setDescription("");
-      setLocation("");
-      setExpiry("");
-      
-      // Navigate to food listings after a short delay
-      setTimeout(() => {
-        navigate("/food-listings");
-      }, 1500);
+      setTitle('');
+      setCategory('');
+      setQuantity('');
+      setDescription('');
+      setLocation('');
+      setExpiry('');
+
+      navigate('/food-listings');
     } catch (error) {
+      console.error('Food listing error:', error);
       toast({
-        title: "Error listing food",
-        description: "There was a problem adding your food listing. Please try again.",
-        variant: "destructive"
+        title: 'Error listing food',
+        description: error.response?.data?.message || 'Failed to create food listing. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);

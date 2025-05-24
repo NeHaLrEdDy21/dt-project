@@ -1,5 +1,6 @@
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { api } from "@/utils/api";
+import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { TabsContent, TabsList, TabsTrigger, Tabs } from "@/components/ui/tabs";
@@ -10,20 +11,36 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Clock, MapPin, Check, X, ArrowUpRight, Save } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getFoodDonations, getFoodRequests, updateFoodQuantity, FoodDonation, FoodRequest } from "@/utils/foodListingUtils";
-import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [myDonations, setMyDonations] = useState<FoodDonation[]>([]);
-  const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
+  const [myDonations, setMyDonations] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<any[]>([]);
   const [editQuantity, setEditQuantity] = useState<{ [key: string]: string | number }>({});
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Load requests and donations from local storage
+  // Load requests and donations from API
   useEffect(() => {
-    setMyDonations(getFoodDonations());
-    setMyRequests(getFoodRequests());
+    const fetchData = async () => {
+      try {
+        const [donations, requests] = await Promise.all([
+          api.getFoodDonations(),
+          api.getFoodRequests()
+        ]);
+        setMyDonations(donations);
+        setMyRequests(requests);
+      } catch (error) {
+        toast({
+          title: "Error loading dashboard",
+          description: "Failed to fetch your data. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchData();
   }, []);
   
   // Calculate stats for the overview tab
@@ -46,7 +63,7 @@ const Dashboard = () => {
   };
   
   // Save updated quantity
-  const handleSaveQuantity = (id: string) => {
+  const handleSaveQuantity = async (id: string) => {
     const newQuantity = parseFloat(String(editQuantity[id]));
     if (isNaN(newQuantity) || newQuantity < 0) {
       toast({
@@ -56,9 +73,10 @@ const Dashboard = () => {
       });
       return;
     }
-    
-    if (updateFoodQuantity(id, newQuantity)) {
-      // Update local state
+
+    try {
+      await api.updateFoodListing(id, { quantity: newQuantity });
+      
       setMyDonations(prevDonations => 
         prevDonations.map(donation => {
           if (donation.foodItem.id === id) {
@@ -73,21 +91,54 @@ const Dashboard = () => {
           return donation;
         })
       );
-      
+
       toast({
         title: "Quantity updated",
         description: "Food quantity has been updated successfully",
       });
-      
-      // Clear the edit state
+
       setEditQuantity(prev => {
         const newState = { ...prev };
         delete newState[id];
         return newState;
       });
+    } catch (error) {
+      toast({
+        title: "Error updating quantity",
+        description: "Failed to update food quantity. Please try again.",
+        variant: "destructive"
+      });
     }
   };
-  
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await api.getDashboardData(); // Ensure this API method exists
+        setData(response);
+      } catch (error: any) {
+        console.error("Dashboard data loading error:", error);
+
+        const errorMessage =
+          error.response?.data?.message || "Failed to load dashboard data.";
+
+        toast({
+          title: "Error loading dashboard",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />

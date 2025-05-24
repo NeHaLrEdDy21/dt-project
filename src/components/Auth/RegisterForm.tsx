@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,44 +6,48 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from '@/utils/api';
 
 const RegisterForm = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [accountType, setAccountType] = useState("donor");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [role, setRole] = useState("donor"); // Default role
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulate registration API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Simple validation - in a real app you'd have server-side validation
-      if (name && email && password) {
-        // Store user info in localStorage (just for demo purposes)
-        localStorage.setItem('user', JSON.stringify({ name, email, role: accountType }));
-        
-        toast({
-          title: "Account created successfully",
-          description: `Welcome to FoodBridge as a ${accountType}!`,
-        });
-        
-        // Redirect to dashboard after registration
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: "Registration failed",
-          description: "Please fill out all required fields",
-          variant: "destructive",
-        });
-      }
-    }, 1500);
+    setIsSubmitting(true);
+
+    try {
+      const response = await api.register({ name, email, password, role });
+
+      // Store the token in localStorage
+      localStorage.setItem('token', response.token);
+
+      toast({
+        title: "Registration successful",
+        description: "Welcome to the platform!",
+      });
+
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error("Registration error:", error);
+
+      // Extract error details
+      const errorMessage =
+        error.response?.data?.error || "An error occurred. Please try again.";
+
+      toast({
+        title: "Registration failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -97,8 +100,8 @@ const RegisterForm = () => {
             <Label>Account Type</Label>
             <RadioGroup 
               defaultValue="donor" 
-              value={accountType} 
-              onValueChange={setAccountType} 
+              value={role} 
+              onValueChange={setRole} 
               className="grid grid-cols-2 gap-4 pt-2"
             >
               <div className="flex items-center space-x-2">
@@ -120,9 +123,9 @@ const RegisterForm = () => {
           <Button
             type="submit"
             className="w-full bg-foodGreen-600 hover:bg-foodGreen-700 text-white"
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
-            {isLoading ? "Creating account..." : "Create account"}
+            {isSubmitting ? "Creating account..." : "Create account"}
           </Button>
           <div className="text-sm text-center text-gray-500 dark:text-gray-400">
             Already have an account?{" "}

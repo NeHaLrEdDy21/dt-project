@@ -40,3 +40,10 @@
 .read-the-docs {
   color: #888;
 }
+
+.backend-status {
+  margin: 20px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+}

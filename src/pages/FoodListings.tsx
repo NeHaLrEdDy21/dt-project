@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAllFoodListings } from "@/utils/foodListingUtils";
+import { api } from '../utils/api';
 
 // Sample food data for demonstration
 const sampleFoodItems: FoodItem[] = [
@@ -110,9 +110,21 @@ const FoodListings = () => {
 
   // Load all food listings on component mount
   useEffect(() => {
-    const foodItems = getAllFoodListings();
-    setAllFoodItems(foodItems);
-    setFilteredItems(foodItems);
+    const fetchListings = async () => {
+      try {
+        const listings = await api.getFoodListings();
+        setAllFoodItems(listings);
+        setFilteredItems(listings);
+      } catch (error) {
+        toast({
+          title: "Error loading listings",
+          description: "Failed to fetch food listings. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchListings();
   }, []);
 
   const handleSearch = () => {
@@ -143,13 +155,20 @@ const FoodListings = () => {
     setFilteredItems(results);
   };
 
-  const handleRequestFood = (id: string) => {
-    const food = allFoodItems.find(item => item.id === id);
-    
-    if (food) {
+  const handleRequestFood = async (id: string) => {
+    try {
+      await api.createFoodRequest({ foodItemId: id });
+      const food = allFoodItems.find(item => item.id === id);
+      
       toast({
         title: "Food Request Sent!",
-        description: `You've requested ${food.title}. The donor will be notified.`,
+        description: `You've requested ${food?.title}. The donor will be notified.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error sending request",
+        description: "Failed to send food request. Please try again.",
+        variant: "destructive"
       });
     }
   };

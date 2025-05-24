@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,45 +5,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from '@/utils/api';
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     
-    // Simulate login API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await api.login({ email, password });
       
-      // Simple validation - in a real app you'd do proper authentication
-      if (email && password) {
-        // Extract name from email for display (just for demo purposes)
-        const name = email.split('@')[0];
-        
-        // Store user info in localStorage (just for demo purposes)
-        localStorage.setItem('user', JSON.stringify({ email, name, role: 'donor' }));
-        
-        toast({
-          title: "Logged in successfully",
-          description: "Welcome back to FoodBridge!",
-        });
-        
-        // Redirect to dashboard after login
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Please check your email and password",
-          variant: "destructive",
-        });
-      }
-    }, 1500);
+      // Store the token in localStorage
+      localStorage.setItem('token', response.token);
+      
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+      
+      navigate('/dashboard');
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: error.response?.data?.message || "Invalid email or password",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,9 +87,9 @@ const LoginForm = () => {
           <Button
             type="submit"
             className="w-full bg-[#8b5a2b] hover:bg-[#6d4726] text-white"
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
-            {isLoading ? "Logging in..." : "Log in"}
+            {isSubmitting ? "Logging in..." : "Log in"}
           </Button>
           <div className="text-sm text-center text-gray-500">
             Don't have an account?{" "}
