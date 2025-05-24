@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from '../utils/api';
+import { transformFoodData } from '@/utils/foodListingUtils';
 
 // Sample food data for demonstration
 const sampleFoodItems: FoodItem[] = [
@@ -106,21 +107,38 @@ const FoodListings = () => {
   const [allFoodItems, setAllFoodItems] = useState<FoodItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<FoodItem[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   // Load all food listings on component mount
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        const listings = await api.getFoodListings();
-        setAllFoodItems(listings);
-        setFilteredItems(listings);
+        setIsLoading(true);
+        const response = await api.getFoodListings();
+        console.log('API Response:', response); // Debug log
+
+        if (!response || !response.data) {
+          throw new Error('Invalid response from server');
+        }
+
+        const transformedData = response.data.map(transformFoodData);
+        console.log('Transformed Data:', transformedData); // Debug log
+
+        setAllFoodItems(transformedData);
+        setFilteredItems(transformedData);
       } catch (error) {
+        console.error('Error fetching listings:', error); // Detailed error log
         toast({
           title: "Error loading listings",
           description: "Failed to fetch food listings. Please try again.",
           variant: "destructive"
         });
+        // Set empty arrays to prevent undefined errors
+        setAllFoodItems([]);
+        setFilteredItems([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -281,7 +299,12 @@ const FoodListings = () => {
           </div>
           
           {/* Food Listings Grid */}
-          {filteredItems.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-foodBrown-600" />
+              <span className="ml-2 text-lg text-gray-600">Loading food listings...</span>
+            </div>
+          ) : filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredItems.map((food) => (
                 <FoodCard

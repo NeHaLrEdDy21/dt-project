@@ -270,3 +270,22 @@ export const updateFoodQuantity = (id: string, quantity: number): boolean => {
     return false;
   }
 };
+
+// Transform backend data to FoodItem format
+export const transformFoodData = (backendData: any): FoodItem => {
+  if (!backendData) {
+    throw new Error('Invalid backend data');
+  }
+
+  return {
+    id: backendData._id || backendData.id, // Handle both ID formats
+    title: backendData.title || 'Untitled',
+    category: backendData.category || 'Uncategorized',
+    quantity: backendData.quantity || '0',
+    location: backendData.location || 'Location unknown',
+    expiry: backendData.expiry || 'Not specified',
+    distance: backendData.distance || 'N/A',
+    description: backendData.description || '',
+    createdAt: backendData.createdAt || new Date().toISOString(),
+  };
+};

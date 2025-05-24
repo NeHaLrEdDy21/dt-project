@@ -1,4 +1,3 @@
-import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -61,19 +60,27 @@ export const api = {
 
   // Food Listings
   getFoodListings: async () => {
-    const response = await axiosInstance.get("/api/food/listings");
-    return response.data;
+    try {
+      const response = await axiosInstance.get("/api/food/listings");
+      console.log('API Response:', response); // Debug log
+      return response;
+    } catch (error) {
+      console.error('Error in getFoodListings:', error);
+      throw error;
+    }
   },
 
-  // Define FoodItem type if not already defined or import it from the correct module
-  updateFoodListing: async (id: string, listing: Partial<{
-    title: string;
-    description: string;
-    category: string;
-    quantity: number;
-    location: string;
-    expiry: string;
-  }>) => {
+  updateFoodListing: async (
+    id: string,
+    listing: Partial<{
+      title: string;
+      description: string;
+      category: string;
+      quantity: number;
+      location: string;
+      expiry: string;
+    }>
+  ) => {
     const response = await axiosInstance.put(`/api/food/listings/${id}`, listing);
     return response.data;
   },
@@ -84,36 +91,96 @@ export const api = {
   },
 
   // Food Requests
-  createFoodRequest: async (request: { foodItemId: string }) => {
-    const response = await axiosInstance.post("/api/food/requests", request);
-    return response.data;
+  createFoodRequest: async (data: { foodItemId: string }) => {
+    try {
+      console.log('Creating food request with data:', data);
+      
+      // Create request with default values
+      const requestData = {
+        foodItemId: data.foodItemId,
+        status: 'pending',
+        requestedAt: new Date().toISOString(),
+        quantity: 1 // Default quantity
+      };
+
+      console.log('Sending request payload:', requestData);
+      const response = await axiosInstance.post("/api/food/requests", requestData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error creating food request:', error.response?.data || error);
+      throw error;
+    }
   },
 
   // Dashboard Data
   getDashboardData: async () => {
-    const response = await axiosInstance.get("/api/dashboard");
-    return response.data;
+    try {
+      const response = await axiosInstance.get('/api/dashboard');
+      console.log('API Response:', response.data); // Debug log
+      
+      // Transform the data if needed
+      const transformedData = {
+        myDonations: response.data.myDonations.map((donation: any) => ({
+          id: donation._id || donation.id,
+          foodItem: {
+            id: donation._id || donation.id,
+            title: donation.title,
+            quantity: donation.quantity,
+            location: donation.location,
+            expiry: donation.expiry,
+            status: donation.status,
+            description: donation.description
+          },
+          status: donation.status,
+          requests: donation.requests || 0,
+          listedAt: donation.createdAt || new Date().toISOString()
+        })),
+        myRequests: response.data.myRequests || [],
+        stats: response.data.stats || {
+          totalDonations: response.data.myDonations?.length || 0,
+          totalRequests: response.data.myRequests?.length || 0
+        }
+      };
+
+      return transformedData;
+    } catch (error: any) {
+      console.error('Error fetching dashboard data:', error.response?.data || error);
+      throw error;
+    }
   },
 };
 
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+// Example handleSubmit function
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, formData: any, navigate: any, toast: any) => {
   e.preventDefault();
-  setIsSubmitting(true);
 
   try {
     // Ensure all required fields are included
     const listing = {
-      title,
-      description,
-      category,
-      quantity: Number(quantity), // Ensure quantity is a number
-      location,
-      expiry,
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      quantity: formData.quantity, // Keep quantity as a string
+      location: formData.location,
+      expiry: formData.expiry,
     };
+
+    // Validate that quantity is a valid positive number
+    const quantityAsNumber = Number(listing.quantity);
+    if (isNaN(quantityAsNumber) || quantityAsNumber <= 0) {
+      throw new Error("Quantity must be a valid positive number.");
+    }
+
+    if (!listing.title || !listing.description || !listing.category || !listing.quantity || !listing.location || !listing.expiry) {
+      throw new Error("All fields are required.");
+    }
 
     console.log("Submitting listing:", listing); // Log the payload for debugging
 
-    await axiosInstance.post("/api/food/listings", listing);
+    await api.createFoodListing({
+      ...listing,
+      quantity: quantityAsNumber, // Convert quantity to a number before sending to the backend
+    });
 
     toast({
       title: "Food successfully listed!",
@@ -121,38 +188,45 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     });
 
     // Reset form
-    setTitle("");
-    setCategory("");
-    setQuantity("");
-    setDescription("");
-    setLocation("");
-    setExpiry("");
+    formData.setTitle("");
+    formData.setCategory("");
+    formData.setQuantity("");
+    formData.setDescription("");
+    formData.setLocation("");
+    formData.setExpiry("");
 
     navigate("/food-listings");
   } catch (error: any) {
     console.error("Error creating food listing:", error);
 
     const errorMessage =
-      error.response?.data?.message || "Failed to create food listing. Please try again.";
+      error.response?.data?.message || error.message || "Failed to create food listing. Please try again.";
 
     toast({
       title: "Error listing food",
       description: errorMessage,
       variant: "destructive",
     });
-  } finally {
-    setIsSubmitting(false);
   }
 };
 
-function setCategory(arg0: string) {
-  throw new Error('Function not implemented.');
-}
-function setIsSubmitting(arg0: boolean) {
-  throw new Error('Function not implemented.');
-}
+const handleRequestFood = async (foodItemId: string) => {
+  try {
+    console.log("Requesting food with ID:", foodItemId); // Debugging log
+    await api.createFoodRequest({ foodItemId });
 
-function toast(arg0: { title: string; description: string; }) {
-  throw new Error('Function not implemented.');
-}
+    toast({
+      title: "Request sent!",
+      description: "Your request has been submitted successfully.",
+    });
+  } catch (error: any) {
+    console.error("Error requesting food:", error);
+
+    toast({
+      title: "Error requesting food",
+      description: error.response?.data?.message || "Failed to request food. Please try again.",
+      variant: "destructive",
+    });
+  }
+};
 

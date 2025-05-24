@@ -2,6 +2,7 @@ import { Clock, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/utils/api"; // Add this import
 import {
   Card,
   CardContent,
@@ -13,15 +14,17 @@ import {
 import { saveFoodRequest } from "@/utils/foodListingUtils";
 
 export type FoodItem = {
-  id: string;
+  id?: string;      // Frontend ID
+  _id?: string;     // Backend ID
   title: string;
   category: string;
   quantity: string | number;
   location: string;
   expiry: string;
-  distance: string;
+  distance?: string;
   image?: string;
   description?: string;
+  createdAt?: string;
 };
 
 interface FoodCardProps {
@@ -30,31 +33,55 @@ interface FoodCardProps {
 }
 
 const FoodCard = ({ food, onRequest }: FoodCardProps) => {
+  // Validate props
+  if (!food || (!food.id && !food._id)) {
+    console.error('FoodCard: Invalid food item data', food);
+    return null;
+  }
+
   const {
     id,
+    _id,
     title,
     category,
     quantity,
     location,
     expiry,
-    distance,
+    distance = 'N/A', // Provide default value
     image,
     description,
   } = food;
 
+  const itemId = id || _id; // Use either id or _id
+
   const { toast } = useToast();
 
-  const handleRequest = () => {
-    // Save request to local storage
-    saveFoodRequest(food);
-    
-    // Call the original onRequest handler
-    onRequest(id);
-    
-    toast({
-      title: "Food requested",
-      description: `You've requested ${title}. Check your dashboard for updates.`,
-    });
+  const handleRequest = async () => {
+    try {
+      const response = await api.createFoodRequest({
+        foodItemId: itemId || undefined
+      });
+
+      console.log('Request response:', response);
+
+      toast({
+        title: "Request sent",
+        description: "Your food request has been submitted successfully.",
+        variant: "success",
+      });
+
+      if (onRequest) {
+        onRequest(itemId);
+      }
+    } catch (error: any) {
+      console.error("Error requesting food:", error);
+      
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to submit request",
+        variant: "destructive",
+      });
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -139,7 +166,7 @@ const FoodCard = ({ food, onRequest }: FoodCardProps) => {
       
       <CardFooter>
         <Button 
-          onClick={handleRequest} 
+          onClick={handleRequest} // Remove the parameter here
           className="w-full bg-[#8b5a2b] hover:bg-[#6d4726] text-white"
         >
           Request Food

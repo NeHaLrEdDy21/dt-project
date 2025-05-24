@@ -11,52 +11,85 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Clock, MapPin, Check, X, ArrowUpRight, Save } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+
+interface FoodItem {
+  id: string;
+  title: string;
+  quantity: number | string;
+  location: string;
+  expiry: string;
+  status: string;
+  description?: string;
+}
+
+interface Donation {
+  id: string;
+  foodItem: FoodItem;
+  status: 'active' | 'completed';
+  requests: number;
+  listedAt: string;
+}
+
+interface DashboardData {
+  myDonations: Donation[];
+  myRequests: any[];
+  stats: {
+    totalDonations: number;
+    totalRequests: number;
+  };
+}
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [myDonations, setMyDonations] = useState<any[]>([]);
-  const [myRequests, setMyRequests] = useState<any[]>([]);
-  const [editQuantity, setEditQuantity] = useState<{ [key: string]: string | number }>({});
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [editQuantity, setEditQuantity] = useState<{ [key: string]: string | number }>({});
   const { toast } = useToast();
-  
-  // Load requests and donations from API
+
+  // Consolidated data fetching
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const [donations, requests] = await Promise.all([
-          api.getFoodDonations(),
-          api.getFoodRequests()
-        ]);
-        setMyDonations(donations);
-        setMyRequests(requests);
-      } catch (error) {
+        setIsLoading(true);
+        const response = await api.getDashboardData();
+        console.log('Raw dashboard data:', response); // Debug log
+
+        if (response && Array.isArray(response.myDonations)) {
+          console.log('Donations found:', response.myDonations.length); // Debug log
+          setData(response);
+        } else {
+          console.error('Invalid data structure:', response); // Debug log
+          throw new Error('Invalid dashboard data received');
+        }
+      } catch (error: any) {
+        console.error('Error fetching dashboard data:', error);
         toast({
-          title: "Error loading dashboard",
-          description: "Failed to fetch your data. Please try again.",
-          variant: "destructive"
+          title: 'Error',
+          description: 'Failed to load dashboard data. Please try again.',
+          variant: 'destructive',
         });
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchData();
+    fetchDashboardData();
   }, []);
-  
-  // Calculate stats for the overview tab
-  const activeDonationsCount = myDonations.filter(d => d.status === 'active').length;
-  const pendingRequestsCount = myRequests.filter(r => r.status === 'pending').length;
-  const totalFoodSaved = myDonations.reduce((total, donation) => {
-    // Only count completed donations
+
+  // Calculate stats using data from the dashboard response
+  const activeDonationsCount = data?.myDonations?.filter(d => d.status === 'active').length || 0;
+  const pendingRequestsCount = data?.myRequests?.filter(r => r.status === 'pending').length || 0;
+  const totalFoodSaved = data?.myDonations?.reduce((total, donation) => {
     if (donation.status === 'completed') {
-      const quantity = typeof donation.foodItem.quantity === 'string' 
-        ? parseFloat(donation.foodItem.quantity) || 0 
-        : donation.foodItem.quantity;
+      const quantity = typeof donation.quantity === 'string' 
+        ? parseFloat(donation.quantity) || 0 
+        : donation.quantity;
       return total + quantity;
     }
     return total;
-  }, 0);
-  
+  }, 0) || 0;
+
   // Handler for quantity edit
   const handleQuantityChange = (id: string, value: string) => {
     setEditQuantity(prev => ({ ...prev, [id]: value }));
@@ -77,8 +110,9 @@ const Dashboard = () => {
     try {
       await api.updateFoodListing(id, { quantity: newQuantity });
       
-      setMyDonations(prevDonations => 
-        prevDonations.map(donation => {
+      setData(prevData => {
+        if (!prevData) return prevData;
+        const updatedDonations = prevData.myDonations.map(donation => {
           if (donation.foodItem.id === id) {
             return {
               ...donation,
@@ -89,8 +123,13 @@ const Dashboard = () => {
             };
           }
           return donation;
-        })
-      );
+        });
+
+        return {
+          ...prevData,
+          myDonations: updatedDonations
+        };
+      });
 
       toast({
         title: "Quantity updated",
@@ -111,32 +150,12 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await api.getDashboardData(); // Ensure this API method exists
-        setData(response);
-      } catch (error: any) {
-        console.error("Dashboard data loading error:", error);
-
-        const errorMessage =
-          error.response?.data?.message || "Failed to load dashboard data.";
-
-        toast({
-          title: "Error loading dashboard",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
   if (isLoading) {
-    return <p>Loading...</p>;
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -226,13 +245,13 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-4">
-                    {myDonations.length === 0 && myRequests.length === 0 ? (
+                    {data?.myDonations.length === 0 && data?.myRequests.length === 0 ? (
                       <li className="text-center text-gray-500">
                         No recent activity. Start by listing food or making a request!
                       </li>
                     ) : (
                       <>
-                        {myDonations.map((donation, index) => (
+                        {data?.myDonations.map((donation, index) => (
                           <li key={`donation-${index}`} className="border-b pb-4">
                             <div className="flex items-center justify-between">
                               <div>
@@ -246,8 +265,8 @@ const Dashboard = () => {
                           </li>
                         ))}
                         
-                        {myRequests.map((request, index) => (
-                          <li key={`request-${index}`} className={index < myRequests.length - 1 ? "border-b pb-4" : ""}>
+                        {data?.myRequests.map((request, index) => (
+                          <li key={`request-${index}`} className={index < data.myRequests.length - 1 ? "border-b pb-4" : ""}>
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-sm font-medium">You requested food</p>
@@ -267,9 +286,9 @@ const Dashboard = () => {
             {/* Donations Tab */}
             <TabsContent value="donations">
               <h2 className="text-xl font-bold mb-4">My Food Donations</h2>
-              {myDonations.length > 0 ? (
+              {data?.myDonations.length > 0 ? (
                 <div className="space-y-4">
-                  {myDonations.map((donation) => (
+                  {data.myDonations.map((donation) => (
                     <Card key={donation.id}>
                       <CardContent className="p-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -377,9 +396,9 @@ const Dashboard = () => {
             {/* Requests Tab */}
             <TabsContent value="requests">
               <h2 className="text-xl font-bold mb-4">My Food Requests</h2>
-              {myRequests.length > 0 ? (
+              {data?.myRequests.length > 0 ? (
                 <div className="space-y-4">
-                  {myRequests.map((request) => (
+                  {data.myRequests.map((request) => (
                     <Card key={request.id}>
                       <CardContent className="p-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between">

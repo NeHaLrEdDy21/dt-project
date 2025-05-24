@@ -50,27 +50,36 @@ const ListFood = () => {
         return;
       }
 
+      // Validate that quantity is a valid positive number
+      const quantityAsNumber = Number(quantity);
+      if (isNaN(quantityAsNumber) || quantityAsNumber <= 0) {
+        toast({
+          title: 'Invalid Quantity',
+          description: 'Quantity must be a valid positive number.',
+          variant: 'destructive',
+        });
+        return;
+      }
       await api.createFoodListing({
         title,
         description,
         category,
-        quantity: Number(quantity),
+        quantity: quantityAsNumber, // Pass as number
         location,
         expiry,
-        createdAt: new Date().toISOString(),
       });
 
       toast({
         title: 'Food successfully listed!',
         description: 'Your donation has been posted.',
       });
-
       // Reset form
       setTitle('');
       setCategory('');
-      setQuantity('');
+      setQuantity(''); // Reset quantity to empty string
       setDescription('');
       setLocation('');
+      setExpiry('');
       setExpiry('');
 
       navigate('/food-listings');
@@ -148,9 +157,10 @@ const ListFood = () => {
                         <Label htmlFor="quantity">Quantity</Label>
                         <Input
                           id="quantity"
-                          placeholder="E.g. 5kg or 10 portions"
+                          type="number" // Ensure the input only accepts numbers
+                          placeholder="E.g. 5 (in kg or portions)"
                           value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
+                          onChange={(e) => setQuantity(e.target.value)} // Keep quantity as string for state
                           required
                         />
                       </div>

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { FoodDonation } from '../models/FoodDonation';
 import { FoodRequest } from '../models/FoodRequest';
 import { FoodListing } from '../models/FoodListing';
-import { AuthRequest } from '../middleware/auth';
+import type { AuthRequest } from '../middleware/auth';
 
 export const getFoodListings = async (req: Request, res: Response) => {
   try {
@@ -16,13 +16,15 @@ export const getFoodListings = async (req: Request, res: Response) => {
 
 export const createFoodListing = async (req: Request, res: Response) => {
   try {
-    console.log("Received request body:", req.body);
-
     const { title, description, category, quantity, location, expiry } = req.body;
 
+    // Validate required fields
     if (!title || !description || !category || !quantity || !location || !expiry) {
-      console.log("Validation failed: Missing required fields");
       return res.status(400).json({ message: "All fields are required." });
+    }
+
+    if (typeof quantity !== "number" || quantity <= 0) {
+      return res.status(400).json({ message: "Quantity must be a valid positive number." });
     }
 
     const listing = new FoodListing({
@@ -36,8 +38,6 @@ export const createFoodListing = async (req: Request, res: Response) => {
     });
 
     const savedListing = await listing.save();
-    console.log("Saved listing:", savedListing);
-
     res.status(201).json(savedListing);
   } catch (error) {
     console.error("Error creating food listing:", error);
@@ -98,5 +98,43 @@ export const getFoodDonations = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Error fetching food donations:', error);
     res.status(500).json({ message: 'Failed to fetch food donations.' });
+  }
+};
+
+export const createFoodRequest = async (req: AuthRequest, res: Response) => {
+  try {
+    const { foodItemId, quantity = 1 } = req.body;
+    
+    // Only validate foodItemId
+    if (!foodItemId) {
+      return res.status(400).json({ message: "Food item ID is required" });
+    }
+
+    // Check if food item exists
+    const foodItem = await FoodListing.findById(foodItemId);
+    if (!foodItem) {
+      return res.status(404).json({ message: "Food item not found" });
+    }
+
+    // Create request with minimal required fields
+    const foodRequest = new FoodRequest({
+      foodItemId,
+      userId: req.user?.userId, // Optional
+      status: 'pending',
+      quantity,
+      requestedAt: new Date()
+    });
+
+    console.log('Creating food request:', foodRequest);
+
+    const savedRequest = await foodRequest.save();
+    
+    res.status(201).json({
+      message: "Food request created successfully",
+      request: savedRequest
+    });
+  } catch (error) {
+    console.error("Error creating food request:", error);
+    res.status(500).json({ message: "Failed to create food request" });
   }
 };
